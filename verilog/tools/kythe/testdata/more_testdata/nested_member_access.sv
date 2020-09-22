@@ -93,5 +93,17 @@ module my_module ();
   //- @nested_function ref/call NestedFunctionNestedClass2
   initial $display(nested_class0::handle1::handle2::nested_function());
 
+  //- @nested_class0 ref NestedClass0
+  //- @handle1 ref Handle1
+  //- @handle2 ref Handle2
+  //- @nested_function ref NestedFunctionNestedClass2
+  //- @nested_function ref/call NestedFunctionNestedClass2
+  initial $display(nested_class0::handle1::handle2.nested_function());
+
+  //- @nested_class2 ref NestedClass2
+  //- @nested_function ref NestedFunctionNestedClass2
+  //- @nested_function ref/call NestedFunctionNestedClass2
+  initial $display(nested_class2::nested_function());
+
   //- @my_module ref MyModule
 endmodule : my_module

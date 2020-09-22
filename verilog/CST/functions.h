@@ -76,6 +76,10 @@ std::vector<verible::TreeSearchMatch> FindAllFunctionDeclarations(
 std::vector<verible::TreeSearchMatch> FindAllFunctionOrTaskCalls(
     const verible::Symbol&);
 
+// Find all function (or Task) calls extension e.g class_name.function_call().
+std::vector<verible::TreeSearchMatch> FindAllFunctionOrTaskCallsExtension(
+    const verible::Symbol&);
+
 // Returns the function declaration header (return type, id, ports)
 const verible::SyntaxTreeNode& GetFunctionHeader(
     const verible::Symbol& function_decl);
@@ -127,6 +131,11 @@ const verible::SyntaxTreeNode& GetLocalRootFromFunctionCall(
 // e.g my_function(); return leaf node for "my_function".
 const verible::SyntaxTreeLeaf* GetFunctionCallName(const verible::Symbol&);
 
+// Returns leaf node for function name in function call extension.
+// e.g class_name.my_function(); return leaf node for "my_function".
+const verible::SyntaxTreeLeaf& GetFunctionCallNameFromCallExtension(
+    const verible::Symbol&);
+
 // Returns the function declaration body.
 const verible::SyntaxTreeNode& GetFunctionBlockStatementList(
     const verible::Symbol&);
@@ -134,6 +143,11 @@ const verible::SyntaxTreeNode& GetFunctionBlockStatementList(
 // Return the node spanning the paren group of function call.
 // e.g my_function(a, b, c) return the node spanning (a, b, c).
 const verible::SyntaxTreeNode& GetParenGroupFromCall(const verible::Symbol&);
+
+// Return the node spanning the paren group of function call extension.
+// e.g my_class.my_function(a, b, c) return the node spanning (a, b, c).
+const verible::SyntaxTreeNode& GetParenGroupFromCallExtension(
+    const verible::Symbol&);
 
 }  // namespace verilog
 

@@ -174,6 +174,10 @@ void IndexingFactsTreeExtractor::Visit(const SyntaxTreeNode& node) {
       ExtractFunctionOrTaskCall(node);
       break;
     }
+    case NodeEnum::kMethodCallExtension: {
+      ExtractMethodCallExtension(node);
+      break;
+    }
     case NodeEnum::kClassDeclaration: {
       ExtractClassDeclaration(node);
       break;
@@ -578,6 +582,42 @@ void IndexingFactsTreeExtractor::ExtractFunctionOrTaskCall(
                                               &function_node);
     const SyntaxTreeNode& arguments = GetParenGroupFromCall(function_call_node);
     // Extract function or task parameters.
+    Visit(arguments);
+  }
+
+  facts_tree_context_.top().NewChild(function_node);
+}
+
+void IndexingFactsTreeExtractor::ExtractMethodCallExtension(
+    const verible::SyntaxTreeNode& call_extension_node) {
+  IndexingNodeData function_node_data(IndexingFactType::kFunctionCall);
+  IndexingFactNode function_node(function_node_data);
+
+  const IndexingFactNode& previous_node =
+      facts_tree_context_.top().Children().back();
+
+  // Fill the anchors of the previous node to the current node.
+  // Previous node should be a kMemberReference or kVariableReference.
+  for (const Anchor& anchor : previous_node.Value().Anchors()) {
+    function_node.Value().AppendAnchor(anchor);
+  }
+
+  // Remove the last node as it was either kMemberReference or
+  // kVariableReference.
+  // The node is removed so that it can be treated as a function call.
+  facts_tree_context_.top().Children().pop_back();
+
+  const SyntaxTreeLeaf& function_name =
+      GetFunctionCallNameFromCallExtension(call_extension_node);
+  function_node.Value().AppendAnchor(
+      Anchor(function_name.get(), context_.base));
+
+  {
+    const IndexingFactsTreeContext::AutoPop p(&facts_tree_context_,
+                                              &function_node);
+    const SyntaxTreeNode& arguments =
+        GetParenGroupFromCallExtension(call_extension_node);
+    // parameters.
     Visit(arguments);
   }
 

@@ -1892,7 +1892,17 @@ TEST(FactsTreeExtractor, FunctionClassCall) {
       {kTag, "inner"},
       ";\n static function int ",
       {kTag, "my_fun"},
-      "();\nreturn 1;\nendfunction\n;\nendclass\n",
+      "();\nreturn 1;\nendfunction\nfunction int ",
+      {kTag, "fun_2"},
+      "(int ",
+      {kTag, "x"},
+      ", int ",
+      {kTag, "y"},
+      ");\nreturn ",
+      {kTag, "x"},
+      " + ",
+      {kTag, "y"},
+      ";\nendfunction\nendclass\n",
       "class ",
       {kTag, "bar"},
       ";\n static ",
@@ -1913,8 +1923,29 @@ TEST(FactsTreeExtractor, FunctionClassCall) {
       {kTag, "in"},
       "::",
       {kTag, "my_fun"},
-      "());\nendmodule: ",
-      {kTag, "foo"},
+      "());\ninitial $display(",
+      {kTag, "bar"},
+      "::",
+      {kTag, "in"},
+      ".",
+      {kTag, "my_fun"},
+      "());\n",
+      {kTag, "inner"},
+      " ",
+      {kTag, "in1"},
+      " = new();\nint ",
+      {kTag, "x"},
+      ", ",
+      {kTag, "y"},
+      ";\ninitial $display(",
+      {kTag, "in1"},
+      ".",
+      {kTag, "fun_2"},
+      "(",
+      {kTag, "x"},
+      ", ",
+      {kTag, "y"},
+      "));\nendmodule",
   }};
 
   constexpr absl::string_view file_name = "verilog.v";
@@ -1937,19 +1968,55 @@ TEST(FactsTreeExtractor, FunctionClassCall) {
               },
               IndexingFactType::kClass,
           },
-          // refers to int x.
+          // refers to function my_fun.
           T({
               {
                   Anchor(kTestCase.expected_tokens[3], kTestCase.code),
               },
               IndexingFactType::kFunctionOrTask,
-          })),
+          }),
+          // refers to function fun_2.
+          T(
+              {
+                  {
+                      Anchor(kTestCase.expected_tokens[5], kTestCase.code),
+                  },
+                  IndexingFactType::kFunctionOrTask,
+              },
+              // refers to x arg in fun_2.
+              T({
+                  {
+                      Anchor(kTestCase.expected_tokens[7], kTestCase.code),
+                  },
+                  IndexingFactType ::kVariableDefinition,
+              }),
+              // refers to y arg in fun_2.
+              T({
+                  {
+                      Anchor(kTestCase.expected_tokens[9], kTestCase.code),
+                  },
+                  IndexingFactType ::kVariableDefinition,
+              }),
+              // refers to x.
+              T({
+                  {
+                      Anchor(kTestCase.expected_tokens[11], kTestCase.code),
+                  },
+                  IndexingFactType ::kVariableReference,
+              }),
+              // refers to x.
+              T({
+                  {
+                      Anchor(kTestCase.expected_tokens[13], kTestCase.code),
+                  },
+                  IndexingFactType ::kVariableReference,
+              }))),
       // refers to class bar.
       T(
           {
               {
-                  Anchor(kTestCase.expected_tokens[6], kTestCase.code),
-                  Anchor(kTestCase.expected_tokens[12], kTestCase.code),
+                  Anchor(kTestCase.expected_tokens[16], kTestCase.code),
+                  Anchor(kTestCase.expected_tokens[22], kTestCase.code),
               },
               IndexingFactType::kClass,
           },
@@ -1957,14 +2024,14 @@ TEST(FactsTreeExtractor, FunctionClassCall) {
           T(
               {
                   {
-                      Anchor(kTestCase.expected_tokens[8], kTestCase.code),
+                      Anchor(kTestCase.expected_tokens[18], kTestCase.code),
                   },
                   IndexingFactType::kDataTypeReference,
               },
               // refers to in1.
               T({
                   {
-                      Anchor(kTestCase.expected_tokens[10], kTestCase.code),
+                      Anchor(kTestCase.expected_tokens[20], kTestCase.code),
                   },
                   IndexingFactType::kClassInstance,
               }))),
@@ -1972,8 +2039,7 @@ TEST(FactsTreeExtractor, FunctionClassCall) {
       T(
           {
               {
-                  Anchor(kTestCase.expected_tokens[14], kTestCase.code),
-                  Anchor(kTestCase.expected_tokens[26], kTestCase.code),
+                  Anchor(kTestCase.expected_tokens[24], kTestCase.code),
               },
               IndexingFactType::kModule,
           },
@@ -1981,26 +2047,87 @@ TEST(FactsTreeExtractor, FunctionClassCall) {
           T(
               {
                   {
-                      Anchor(kTestCase.expected_tokens[16], kTestCase.code),
+                      Anchor(kTestCase.expected_tokens[26], kTestCase.code),
                   },
                   IndexingFactType ::kDataTypeReference,
               },
               // refers to b1.
               T({
                   {
-                      Anchor(kTestCase.expected_tokens[18], kTestCase.code),
+                      Anchor(kTestCase.expected_tokens[28], kTestCase.code),
                   },
                   IndexingFactType ::kClassInstance,
               })),
           // refers to bar::in::my_fun().
           T({
               {
-                  Anchor(kTestCase.expected_tokens[20], kTestCase.code),
-                  Anchor(kTestCase.expected_tokens[22], kTestCase.code),
-                  Anchor(kTestCase.expected_tokens[24], kTestCase.code),
+                  Anchor(kTestCase.expected_tokens[30], kTestCase.code),
+                  Anchor(kTestCase.expected_tokens[32], kTestCase.code),
+                  Anchor(kTestCase.expected_tokens[34], kTestCase.code),
               },
               IndexingFactType ::kFunctionCall,
-          })));
+          }),
+          // refers to bar::in.my_fun().
+          T({
+              {
+                  Anchor(kTestCase.expected_tokens[36], kTestCase.code),
+                  Anchor(kTestCase.expected_tokens[38], kTestCase.code),
+                  Anchor(kTestCase.expected_tokens[40], kTestCase.code),
+              },
+              IndexingFactType ::kFunctionCall,
+          }),
+          // refers to inner in1.
+          T(
+              {
+                  {
+                      Anchor(kTestCase.expected_tokens[42], kTestCase.code),
+                  },
+                  IndexingFactType::kDataTypeReference,
+              },
+              // refers to in1.
+              T({
+                  {
+                      Anchor(kTestCase.expected_tokens[44], kTestCase.code),
+                  },
+                  IndexingFactType::kClassInstance,
+              })),
+          // refers to int x.
+          T({
+              {
+                  Anchor(kTestCase.expected_tokens[46], kTestCase.code),
+              },
+              IndexingFactType ::kVariableDefinition,
+          }),
+          // refers to int y.
+          T({
+              {
+                  Anchor(kTestCase.expected_tokens[48], kTestCase.code),
+              },
+              IndexingFactType ::kVariableDefinition,
+          }),
+          // refers to in1.my_fun().
+          T(
+              {
+                  {
+                      Anchor(kTestCase.expected_tokens[50], kTestCase.code),
+                      Anchor(kTestCase.expected_tokens[52], kTestCase.code),
+                  },
+                  IndexingFactType ::kFunctionCall,
+              },
+              // refers to x.
+              T({
+                  {
+                      Anchor(kTestCase.expected_tokens[54], kTestCase.code),
+                  },
+                  IndexingFactType ::kVariableReference,
+              }),
+              // refers to y.
+              T({
+                  {
+                      Anchor(kTestCase.expected_tokens[56], kTestCase.code),
+                  },
+                  IndexingFactType ::kVariableReference,
+              }))));
 
   const auto facts_tree =
       ExtractOneFile(kTestCase.code, file_name, exit_status, parse_ok);

@@ -44,6 +44,8 @@ enum class IndexingFactType {
   kVariableDefinition,
   kTypeDeclaration,
   kStructOrUnion,
+  kAnonymousType,
+  kAnonymousScopeReference,
   kInclude,
   kVariableReference,
   kFunctionOrTask,

@@ -175,7 +175,7 @@ class KytheFactsExtractor {
   VName ExtractClassInstances(const IndexingFactNode& class_instance_fact_node);
 
   // Creates a new anonymous scope for if conditions and loops.
-  VName ExtractAnonymousScope(const IndexingFactNode& temp_scope);
+  VName ExtractAnonymousScopeAndType(const IndexingFactNode& temp_scope);
 
   // Extracts kythe facts from a function or task node and returns its VName.
   VName ExtractFunctionOrTask(const IndexingFactNode& function_fact_node);

@@ -1431,10 +1431,16 @@ void IndexingFactsTreeExtractor::ExtractStructUnionTypeDeclaration(
 void IndexingFactsTreeExtractor::ExtractStructUnionDeclaration(
     const SyntaxTreeNode& struct_type,
     const std::vector<TreeSearchMatch>& variables_matched) {
-  // Dummy data type to hold the extracted struct members because there is no
-  // data type here.
+  // Anonymous data type to hold the extracted struct members because there is
+  // no data type here.
   IndexingFactNode struct_node(
-      IndexingNodeData{IndexingFactType::kStructOrUnion});
+      IndexingNodeData{IndexingFactType::kAnonymousType});
+
+  std::string anonymous_type =
+      absl::StrCat("anonymous-type-", next_anonymous_id++);
+
+  // Generate unique id for this type.
+  struct_node.Value().AppendAnchor(Anchor(anonymous_type, 0, 0));
 
   {
     const IndexingFactsTreeContext::AutoPop p(&facts_tree_context_,
@@ -1443,16 +1449,26 @@ void IndexingFactsTreeExtractor::ExtractStructUnionDeclaration(
     Visit(struct_type);
   }
 
-  for (const TreeSearchMatch& variable : variables_matched) {
-    // Extract this variable.
-    // This can be kRegisterVariable or kVariableDeclarationAssign.
-    Visit(verible::SymbolCastToNode(*variable.match));
+  facts_tree_context_.top().NewChild(struct_node);
 
-    // Append the struct members to be a children of this variable.
-    for (const auto& child : struct_node.Children()) {
-      facts_tree_context_.top().Children().back().NewChild(child);
+  // Create anonymous type reference.
+  IndexingFactNode anonymous_type_reference(
+      IndexingNodeData{IndexingFactType::kAnonymousScopeReference});
+  anonymous_type_reference.Value().AppendAnchor(Anchor(anonymous_type, 0, 0));
+
+  {
+    const IndexingFactsTreeContext::AutoPop p(&facts_tree_context_,
+                                              &anonymous_type_reference);
+
+    for (const TreeSearchMatch& variable : variables_matched) {
+      // Extract this variable.
+      // This can be kRegisterVariable or kVariableDeclarationAssign.
+      Visit(verible::SymbolCastToNode(*variable.match));
     }
   }
+
+  // Insert a kAnonymousTypeReference node.
+  facts_tree_context_.top().NewChild(anonymous_type_reference);
 }
 
 void IndexingFactsTreeExtractor::ExtractDataTypeImplicitIdDimensions(
@@ -1496,9 +1512,18 @@ void IndexingFactsTreeExtractor::ExtractDataTypeImplicitIdDimensions(
     type_node.NewChild(variable_node);
     facts_tree_context_.top().NewChild(type_node);
   } else if (variable_name.second == 2) {
+    // Anonymous data type to hold the extracted struct members because there is
+    // no data type here.
+    IndexingFactNode anonymous_type_node(
+        IndexingNodeData{IndexingFactType::kAnonymousType});
+    std::string anonymous_type =
+        absl::StrCat("anonymous-type-", next_anonymous_id++);
+    // Generate unique id for this type.
+    anonymous_type_node.Value().AppendAnchor(Anchor(anonymous_type, 0, 0));
+
     {
       const IndexingFactsTreeContext::AutoPop p(&facts_tree_context_,
-                                                &variable_node);
+                                                &anonymous_type_node);
       for (const auto& child : data_type_implicit_id_dimensions.children()) {
         if (child == nullptr || child->Kind() == verible::SymbolKind::kLeaf) {
           continue;
@@ -1506,8 +1531,15 @@ void IndexingFactsTreeExtractor::ExtractDataTypeImplicitIdDimensions(
         Visit(verible::SymbolCastToNode(*child));
       }
     }
+    facts_tree_context_.top().NewChild(anonymous_type_node);
 
-    facts_tree_context_.top().NewChild(variable_node);
+    // Create anonymous type reference.
+    IndexingFactNode anonymous_type_reference(
+        IndexingNodeData{IndexingFactType::kAnonymousScopeReference});
+    anonymous_type_reference.Value().AppendAnchor(Anchor(anonymous_type, 0, 0));
+    anonymous_type_reference.NewChild(variable_node);
+    // Insert a kAnonymousTypeReference node.
+    facts_tree_context_.top().NewChild(anonymous_type_reference);
   }
 }
 

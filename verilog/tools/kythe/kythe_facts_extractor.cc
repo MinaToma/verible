@@ -151,8 +151,9 @@ void KytheFactsExtractor::IndexingFactNodeTagResolver(
       vname = ExtractStructOrUnion(node);
       break;
     }
+    case IndexingFactType::kAnonymousType:
     case IndexingFactType::kAnonymousScope: {
-      vname = ExtractAnonymousScope(node);
+      vname = ExtractAnonymousScopeAndType(node);
       break;
     }
     case IndexingFactType::kTypeDeclaration: {
@@ -222,6 +223,7 @@ void KytheFactsExtractor::AddVNameToScopeContext(IndexingFactType tag,
     case IndexingFactType::kFunctionOrTask:
     case IndexingFactType::kParamDeclaration:
     case IndexingFactType::kPackage:
+    case IndexingFactType::kAnonymousType:
     case IndexingFactType::kConstant:
     case IndexingFactType::kTypeDeclaration:
     case IndexingFactType::kInterface:
@@ -243,6 +245,8 @@ void KytheFactsExtractor::CreateChildOfEdge(IndexingFactType tag,
     case IndexingFactType::kPackageImport:
     case IndexingFactType::kVariableReference:
     case IndexingFactType::kDataTypeReference:
+    case IndexingFactType::kAnonymousType:
+    case IndexingFactType::kAnonymousScopeReference:
     case IndexingFactType::kMacroCall:
     case IndexingFactType::kFunctionCall:
     case IndexingFactType::kMacro:
@@ -289,7 +293,8 @@ void KytheFactsExtractor::Visit(const IndexingFactNode& node,
       Visit(node, vname, current_scope);
       break;
     }
-    case IndexingFactType::kAnonymousScope: {
+    case IndexingFactType::kAnonymousScope:
+    case IndexingFactType::kAnonymousType: {
       Visit(node, vname, current_scope);
       break;
     }
@@ -314,50 +319,21 @@ void KytheFactsExtractor::ConstructFlattenedScope(const IndexingFactNode& node,
     case IndexingFactType::kClass:
     case IndexingFactType::kFunctionOrTask:
     case IndexingFactType::kMacro:
+    case IndexingFactType::kAnonymousType:
     case IndexingFactType::kPackage:
     case IndexingFactType::kInterface:
     case IndexingFactType::kProgram: {
       scope_resolver_->MapSignatureToScope(vname.signature, current_scope);
       break;
     }
-    case IndexingFactType::kVariableDefinition: {
-      // Break if this variable has no type.
-      if (node.Parent() == nullptr ||
-          node.Parent()->Value().GetIndexingFactType() !=
-              IndexingFactType::kDataTypeReference) {
-        scope_resolver_->MapSignatureToScope(vname.signature, current_scope);
-        break;
-      }
-
-      // TODO(minatoma): refactor this and the below case into function.
-      // TODO(minatoma): move this case to below and make variable definitions
-      // scope-less.
-      // TODO(minatoma): consider getting rid of kModuleInstance and
-      // kClassInstance and use kVariableDefinition if they don't provide
-      // anything new.
-      const std::vector<const VName*> found_vnames =
-          scope_resolver_->SearchForDefinitions(
-              {node.Parent()->Value().Anchors()[0].Value()});
-
-      if (found_vnames.empty()) {
-        break;
-      }
-
-      const Scope* type_scope =
-          scope_resolver_->SearchForScope(found_vnames[0]->signature);
-      if (type_scope != nullptr) {
-        current_scope.AppendScope(*type_scope);
-      }
-
-      scope_resolver_->MapSignatureToScope(vname.signature, current_scope);
-
-      break;
-    }
+    case IndexingFactType::kVariableDefinition:
     case IndexingFactType::kModuleInstance:
     case IndexingFactType::kClassInstance: {
       if (node.Parent() == nullptr ||
-          node.Parent()->Value().GetIndexingFactType() !=
-              IndexingFactType::kDataTypeReference) {
+          (node.Parent()->Value().GetIndexingFactType() !=
+               IndexingFactType::kDataTypeReference &&
+           node.Parent()->Value().GetIndexingFactType() !=
+               IndexingFactType::kAnonymousScopeReference)) {
         break;
       }
 
@@ -930,7 +906,7 @@ void KytheFactsExtractor::ExtractInclude(const IndexingFactNode& include_node) {
   scope_resolver_->AppendScopeToScopeContext(*included_file_scope);
 }
 
-VName KytheFactsExtractor::ExtractAnonymousScope(
+VName KytheFactsExtractor::ExtractAnonymousScopeAndType(
     const IndexingFactNode& temp_scope) {
   const auto& scope_id = temp_scope.Value().Anchors()[0];
   return VName(file_path_, CreateScopeRelativeSignature(scope_id.Value()));
